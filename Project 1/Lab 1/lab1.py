@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
 import sys
+from itertools import chain
+from collections import defaultdict
 from bs4 import BeautifulSoup
 
 def is_number(s):
@@ -63,46 +65,82 @@ def sortDictionary(dictionary):
         sorteddict[key] = dictionary[key] 
     return sorteddict
 
-def addToList(list,docid):
+def addToList(postings_list,docid):
     if docid not in postings_list :
-        return list.insert(0,docid) 
+        return postings_list.insert(0,docid) 
     else :
-        return list   
+        return postings_list   
 
 def saveObject(dictionary,fileName):
     with open(fileName, 'w') as file:
-        file.write(json.dumps(dictionary))   
+        file.write(json.dumps(dictionary,sort_keys=True))   
     print("File : " + fileName + " saved! ")
+
+def mergeDicts(dict1,dict2):
+    dict3 = defaultdict(list)
+    for k, v in chain(dict1.items(),dict2.items()):
+        dict3[k].extend(v)
+    return dict3
+
+def SPIMI(tokens,blockSizeLimit):
+    print("Runing SPIMI")
+    #print(len(tokens))  
+    fileCounter = 0    
+    dictionary= {} 
+    initLenth = len(tokens)
+    while(len(tokens)>0):
+        while (sys.getsizeof(dictionary)/1024) <= blockSizeLimit : 
+            sys.stdout.write("\rIndexing data %i" % (100-(len(tokens)*100/initLenth)))
+            sys.stdout.flush()             
+            #if((len(tokens)%10000) == 0):
+            #    print("memory : " + str(sys.getsizeof(dictionary)/1024) + " " + str(len(tokens))) 
+            if(len(tokens)==0) : break      
+            token = tokens.pop(0)
+            #print(token[0])
+            if token[0] not in dictionary : 
+                postings_list = [] 
+                dictionary[token[0]] = postings_list
+            else :
+                postings_list = dictionary[token[0]]
+            addToList(postings_list,token[1])
+        saveObject(dictionary,"Minidict" +str(fileCounter)+ ".json" )
+        fileCounter = fileCounter+1
+        dictionary = {}
+    return fileCounter
+
+#merge blocks
+def mergeFiles(fileCount):
+    with open("FinalDictionary.json", 'w') as final:         
+        final.write("{}")   
+    for i in range(0,fileCount):
+        print(i)  
+        with open("Minidict"+str(i)+".json") as file1:
+            data1 = json.load(file1)  
+        with open("FinalDictionary.json") as file2:
+            data2 = json.load(file2)     
+        data3 = mergeDicts(data1,data2)           
+        with open("FinalDictionary.json", 'w') as final:         
+            final.write(json.dumps(data3,sort_keys=True)) 
          
 
-dictionary= {}
 tokens = []
-fileCounter = 0
 
-for z in range (0,6):
+for z in range (0,12):
     ss = ""
     if z < 10: ss = "0"
-    # print("/Users/mouadbouras/Desktop/SOEN 479/reuters21578/reut2-0"+ss+str(z)+".sgm")
     with open("/Users/mouadbouras/Desktop/SOEN 479/reuters21578/reut2-0"+ss+str(z)+".sgm") as fp:
         data = fp.read()    
         data = data[:35] + "<ROOT>" + data[35:] + "</ROOT>"
-
     soup = BeautifulSoup(data, "xml")
-    #strip(' \t\n\r') #"/this is/a test of the/class// and/all//last"
 
+    reuters = soup.find_all('REUTERS')
 
-    #print(soup.TITLE.string)
-
-    #id = soup.REUTERS["NEWID"]
-    #s =  soup.BODY.string.strip()
-    #s = s.replace("\t", " ").replace("\n", " ").replace("\r", " ") 
-    #print("Id : " + id)
-    ids = soup.find_all('REUTERS')
-    bodys =  soup.find_all('BODY')
-
-    for j in range (0 , len(bodys)):
-        id = ids[j]["NEWID"]
-        body = bodys[j]
+    for j in range (0 , len(reuters)):
+        id = int(reuters[j]["NEWID"])
+        # print(reuters[j].BODY)
+        if not reuters[j].BODY : continue                    
+        body = reuters[j].BODY
+        # print(body.string)
         s = body.string.strip()
         s = s.replace("\t", " ").replace("\n", " ").replace("\r", " ").replace("+", " ").replace("/", " ").replace(".", " ").replace(",", " ").replace("?", " ").replace("!", " ")        
         tokens.extend(tokenize(s,id))
@@ -123,28 +161,22 @@ for z in range (0,6):
         # for token in tokens: 
         #     #print(str(i) + ':' + token)
         #     # print(sys.getsizeof(dictionary)/1024)
-
-blockSizeLimit = 1000    
+sys.stdout.write("\rTokenizing data 100")
+sys.stdout.flush()
 print("\nTokenizing Done")
-print("Runing SPIMI")
-#print(len(tokens))   
-while(len(tokens)>0):
-    while (sys.getsizeof(dictionary)/512) <= blockSizeLimit :  
-        #if((len(tokens)%10000) == 0):
-        #    print("memory : " + str(sys.getsizeof(dictionary)/1024) + " " + str(len(tokens))) 
-        if(len(tokens)==0) : break      
-        token = tokens.pop(0)
-        #print(token[0])
-        if token[0] not in dictionary : 
-            postings_list = [] 
-            dictionary[token[0]] = postings_list
-        else :
-            postings_list = dictionary[token[0]]
-        addToList(postings_list,token[1])
-    saveObject(sortDictionary(dictionary),"Minidict" +str(fileCounter)+ ".json" )
-    fileCounter = fileCounter+1
-    dictionary = {}
+fileCount = SPIMI(tokens,1000)
+mergeFiles(fileCount)
 
+         
+
+
+           
+    
+# with open("Minidict1.json") as file2:
+#     data2 = json.load(file2)   
+# data3 = mergeDicts(data1,data2)   
+# with open("FinalDictionary.json", 'w') as final:         
+#     final.write(json.dumps(data3,sort_keys=True))   
 
 #for key in sorted(dictionary):
 #    print(key, dictionary[key] ) 
