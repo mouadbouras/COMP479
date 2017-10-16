@@ -36,10 +36,10 @@ def uniqueList(lists):
 
 
 while True :
-    search = raw_input("Please enter search query: ")
+    search = input("Please enter search query: ")
     print "you entered", search
 
-    tmpList = search.strip().lower().split(" or ")
+    tmpList = search.strip().split(" or ")
     searchList = []    
     for query in tmpList:
         searchList.append(query.split(" "))
@@ -54,7 +54,7 @@ while True :
         queryResult = []
         for term in query:
             postings = []
-            if(term.strip() != "") and (term.strip().lower() in dictionary) : 
+            if(term.strip() != "") and (term.strip() in dictionary) : 
                 postings.append(dictionary[term])
             queryResult.extend(postings)                  
         searchResult.append(combineLists(queryResult))

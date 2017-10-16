@@ -27,7 +27,14 @@ def tokenize(s,id) :
               "has" , "he", "in" , "is" , "it", 
               "its" , "of" , "on" , "that" , "the",
               "to" , "was" , "were", "will", "with"]     
-    delimiter =  ' '              
+    delimiter =  ' '   
+
+    characters = ["\t" ,"\n", "\r", "+", "/", ".",",","?", "!", "(" , ")" , "[" , "]" , "\\" ]
+    for char in characters :
+        s = s.replace(char, " ")
+    
+    #s = s.replace("\t", " ").replace("\n", " ").replace("\r", " ").replace("+", " ").replace("/", " ").replace(".", " ").replace(",", " ").replace("?", " ").replace("!", " ")        
+           
     # calculate number of delimiter characters
     n = 0
     for i in range (0,len(s)):
@@ -39,7 +46,7 @@ def tokenize(s,id) :
         while (s[right] != delimiter):
             right += 1
         tmp = s[left: right] 
-        tmp = tmp.strip('.,?!').lower()
+        tmp = tmp.strip('.,?!()[];:') #.lower()
         valid = True 
         if (tmp.strip()!="" and is_number(tmp[0])==False) :
             for j in range (0,len(stopwords)):
@@ -52,10 +59,11 @@ def tokenize(s,id) :
         if(valid == True):
             tokens.append([tmp,id])
         right+=1
-        left = right      
+        left = right   
+    tmp = s[right:len(s)] 
     for j in range (0,len(stopwords)):
-        if(s[right:len(s)].lower() != stopwords[j].lower()):
-            tokens.append([s[right:len(s)],id])
+        if(tmp.lower() != stopwords[j].lower() and tmp.strip()!="" and is_number(tmp[0])==False ):
+            tokens.append([tmp,id])
             break
     return tokens
 
@@ -128,7 +136,7 @@ tokens = []
 for z in range (0,12):
     ss = ""
     if z < 10: ss = "0"
-    with open("/Users/mouadbouras/Desktop/SOEN 479/reuters21578/reut2-0"+ss+str(z)+".sgm") as fp:
+    with open("./reuters21578/reut2-0"+ss+str(z)+".sgm") as fp:
         data = fp.read()    
         data = data[:35] + "<ROOT>" + data[35:] + "</ROOT>"
     soup = BeautifulSoup(data, "xml")
@@ -142,7 +150,6 @@ for z in range (0,12):
         body = reuters[j].BODY
         # print(body.string)
         s = body.string.strip()
-        s = s.replace("\t", " ").replace("\n", " ").replace("\r", " ").replace("+", " ").replace("/", " ").replace(".", " ").replace(",", " ").replace("?", " ").replace("!", " ")        
         tokens.extend(tokenize(s,id))
 
     sys.stdout.write("\rTokenizing data %i" % ((z*100/12)))
