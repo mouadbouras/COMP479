@@ -37,9 +37,9 @@ def uniqueList(lists):
 
 while True :
     search = input("Please enter search query: ")
-    print "you entered", search
+    print ("you entered", search)
 
-    tmpList = search.strip().split(" or ")
+    tmpList = search.strip().lower().split(" or ")
     searchList = []    
     for query in tmpList:
         searchList.append(query.split(" "))

@@ -20,13 +20,21 @@ def is_number(s):
         pass
     return False    
 
+def isStopword(tmp,stopwords):
+    for j in range (0,len(stopwords)):
+        if(tmp.lower() == stopwords[j].lower()):
+            return True
+            break 
+    return False
+
+
 def tokenize(s,id) : 
     tokens=[]
     stopwords = [ "Reuters","a" , "an" , "and" , "are", "as", 
               "at" , "be" ,"by" , "for", "from",
               "has" , "he", "in" , "is" , "it", 
               "its" , "of" , "on" , "that" , "the",
-              "to" , "was" , "were", "will", "with"]     
+              "to" , "was" , "were", "will", "with"]   
     delimiter =  ' '   
 
     characters = ["\t" ,"\n", "\r", "+", "/", ".",",","?", "!", "(" , ")" , "[" , "]" , "\\" ]
@@ -46,25 +54,16 @@ def tokenize(s,id) :
         while (s[right] != delimiter):
             right += 1
         tmp = s[left: right] 
-        tmp = tmp.strip('.,?!()[];:') #.lower()
+        tmp = tmp.strip('.,?!()[];:').lower()
         valid = True 
-        if (tmp.strip()!="" and is_number(tmp[0])==False) :
-            for j in range (0,len(stopwords)):
-                if(tmp.lower() == stopwords[j].lower()):
-                    valid = False
-                    break 
-        else : 
-            valid = False         
-        
-        if(valid == True):
+        if (tmp.strip()!= "" and is_number(tmp[0])==False and not isStopword(tmp,stopwords)) :
             tokens.append([tmp,id])
         right+=1
         left = right   
     tmp = s[right:len(s)] 
-    for j in range (0,len(stopwords)):
-        if(tmp.lower() != stopwords[j].lower() and tmp.strip()!="" and is_number(tmp[0])==False ):
-            tokens.append([tmp,id])
-            break
+    tmp = tmp.strip('.,?!()[];:').lower()    
+    if (tmp.strip()!="" and is_number(tmp[0])==False and not isStopword(tmp,stopwords) ):
+        tokens.append([tmp,id])
     return tokens
 
 def sortDictionary(dictionary):
@@ -96,6 +95,8 @@ def SPIMI(tokens,blockSizeLimit):
     fileCounter = 0    
     dictionary= {} 
     initLenth = len(tokens)
+    postingCount = 0
+    dictionaryCount = 0
     while(len(tokens)>0):
         while (sys.getsizeof(dictionary)/1024) <= blockSizeLimit : 
             sys.stdout.write("\rIndexing data %i" % (100-(len(tokens)*100/initLenth)))
@@ -108,12 +109,18 @@ def SPIMI(tokens,blockSizeLimit):
             if token[0] not in dictionary : 
                 postings_list = [] 
                 dictionary[token[0]] = postings_list
+                dictionaryCount = dictionaryCount + 1
             else :
                 postings_list = dictionary[token[0]]
+            length = len(postings_list)
             addToList(postings_list,token[1])
+            if(length != len(postings_list)): 
+                postingCount = postingCount + 1
         saveObject(dictionary,"Minidict" +str(fileCounter)+ ".json" )
         fileCounter = fileCounter+1
         dictionary = {}
+        print("Postings Count : "+ str(postingCount))
+        print("Term Count : "+ str(dictionaryCount))
     return fileCounter
 
 #merge blocks
@@ -133,7 +140,7 @@ def mergeFiles(fileCount):
 
 tokens = []
 
-for z in range (0,12):
+for z in range (0,22):
     ss = ""
     if z < 10: ss = "0"
     with open("./reuters21578/reut2-0"+ss+str(z)+".sgm") as fp:
@@ -146,13 +153,15 @@ for z in range (0,12):
     for j in range (0 , len(reuters)):
         id = int(reuters[j]["NEWID"])
         # print(reuters[j].BODY)
-        if not reuters[j].BODY : continue                    
+        if not reuters[j].BODY : continue  
+        title =  reuters[j].TITLE                 
         body = reuters[j].BODY
         # print(body.string)
-        s = body.string.strip()
+        s = title.string.strip()
+        s += " " + body.string.strip()
         tokens.extend(tokenize(s,id))
 
-    sys.stdout.write("\rTokenizing data %i" % ((z*100/12)))
+    sys.stdout.write("\rTokenizing data %i" % ((z*100/22)))
     sys.stdout.flush()
         
         # #print(dictionary)
@@ -171,7 +180,8 @@ for z in range (0,12):
 sys.stdout.write("\rTokenizing data 100")
 sys.stdout.flush()
 print("\nTokenizing Done")
-fileCount = SPIMI(tokens,1000)
+print("Token Count " + str(len(tokens)))
+fileCount = SPIMI(tokens,2000)
 mergeFiles(fileCount)
 
          
